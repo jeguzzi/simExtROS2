@@ -5,9 +5,12 @@
 #include <functional>
 using namespace std::placeholders;
 
+#include <boost/type_erasure/any_cast.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <sensor_msgs/image_encodings.hpp>
+#if image_transport_FOUND
 #include <image_transport/image_transport.hpp>
+#endif
 //#include <cv_bridge/cv_bridge.h>
 
 #include <rclcpp/rclcpp.hpp>
@@ -88,8 +91,13 @@ public:
         int associatedObject;
         if(simGetScriptProperty(scriptID, &property, &associatedObject) == -1)
             return false;
+#if SIM_PROGRAM_FULL_VERSION_NB <= 4010003
         if(property & sim_scripttype_threaded)
             property -= sim_scripttype_threaded;
+#else
+        if(property & sim_scripttype_threaded_old)
+            property -= sim_scripttype_threaded_old;
+#endif
         if(property == sim_scripttype_addonscript || property == sim_scripttype_addonfunction || property == sim_scripttype_customizationscript)
             return false;
         return true;
@@ -154,7 +162,7 @@ public:
     {
         if(subscriptionProxies.find(in->subscriptionHandle) == subscriptionProxies.end())
         {
-            throw exception("invalid subscription handle");
+            throw sim::exception("invalid subscription handle");
         }
 
         SubscriptionProxy *subscriptionProxy = subscriptionProxies[in->subscriptionHandle];
@@ -174,7 +182,7 @@ public:
     {
         if(subscriptionProxies.find(in->subscriptionHandle) == subscriptionProxies.end())
         {
-            throw exception("invalid subscription handle");
+            throw sim::exception("invalid subscription handle");
         }
 
         SubscriptionProxy *subscriptionProxy = subscriptionProxies[in->subscriptionHandle];
@@ -204,7 +212,7 @@ public:
     {
         if(publisherProxies.find(in->publisherHandle) == publisherProxies.end())
         {
-            throw exception("invalid publisher handle");
+            throw sim::exception("invalid publisher handle");
         }
 
         PublisherProxy *publisherProxy = publisherProxies[in->publisherHandle];
@@ -224,7 +232,7 @@ public:
     {
         if(publisherProxies.find(in->publisherHandle) == publisherProxies.end())
         {
-            throw exception("invalid publisher handle");
+            throw sim::exception("invalid publisher handle");
         }
 
         PublisherProxy *publisherProxy = publisherProxies[in->publisherHandle];
@@ -235,7 +243,7 @@ public:
     {
         if(publisherProxies.find(in->publisherHandle) == publisherProxies.end())
         {
-            throw exception("invalid publisher handle");
+            throw sim::exception("invalid publisher handle");
         }
 
         PublisherProxy *publisherProxy = publisherProxies[in->publisherHandle];
@@ -273,7 +281,7 @@ public:
     {
         if(clientProxies.find(in->clientHandle) == clientProxies.end())
         {
-            throw exception("invalid service client handle");
+            throw sim::exception("invalid service client handle");
         }
 
         ClientProxy *clientProxy = clientProxies[in->clientHandle];
@@ -293,7 +301,7 @@ public:
     {
         if(clientProxies.find(in->clientHandle) == clientProxies.end())
         {
-            throw exception("invalid service client handle");
+            throw sim::exception("invalid service client handle");
         }
 
         ClientProxy *clientProxy = clientProxies[in->clientHandle];
@@ -305,7 +313,7 @@ public:
     {
         if(clientProxies.find(in->clientHandle) == clientProxies.end())
         {
-            throw exception("invalid service client handle");
+            throw sim::exception("invalid service client handle");
         }
 
         ClientProxy *clientProxy = clientProxies[in->clientHandle];
@@ -322,7 +330,7 @@ public:
     {
         if(clientProxies.find(in->clientHandle) == clientProxies.end())
         {
-            throw exception("invalid service client handle");
+            throw sim::exception("invalid service client handle");
         }
 
         ClientProxy *clientProxy = clientProxies[in->clientHandle];
@@ -362,7 +370,7 @@ public:
     {
         if(serviceProxies.find(in->serviceHandle) == serviceProxies.end())
         {
-            throw exception("invalid service handle");
+            throw sim::exception("invalid service handle");
         }
 
         ServiceProxy *serviceProxy = serviceProxies[in->serviceHandle];
@@ -382,7 +390,7 @@ public:
     {
         if(serviceProxies.find(in->serviceHandle) == serviceProxies.end())
         {
-            throw exception("invalid service handle");
+            throw sim::exception("invalid service handle");
         }
 
         ServiceProxy *serviceProxy = serviceProxies[in->serviceHandle];
@@ -419,7 +427,7 @@ public:
     {
         if(actionClientProxies.find(in->actionClientHandle) == actionClientProxies.end())
         {
-            throw exception("invalid action client handle");
+            throw sim::exception("invalid action client handle");
         }
 
         ActionClientProxy *actionClientProxy = actionClientProxies[in->actionClientHandle];
@@ -439,7 +447,7 @@ public:
     {
         if(actionClientProxies.find(in->actionClientHandle) == actionClientProxies.end())
         {
-            throw exception("invalid action client handle");
+            throw sim::exception("invalid action client handle");
         }
 
         ActionClientProxy *actionClientProxy = actionClientProxies[in->actionClientHandle];
@@ -451,7 +459,7 @@ public:
     {
         if(actionClientProxies.find(in->actionClientHandle) == actionClientProxies.end())
         {
-            throw exception("invalid action client handle");
+            throw sim::exception("invalid action client handle");
         }
 
         ActionClientProxy *actionClientProxy = actionClientProxies[in->actionClientHandle];
@@ -470,7 +478,7 @@ public:
     {
         if(actionClientProxies.find(in->actionClientHandle) == actionClientProxies.end())
         {
-            throw exception("invalid action client handle");
+            throw sim::exception("invalid action client handle");
         }
 
         ActionClientProxy *actionClientProxy = actionClientProxies[in->actionClientHandle];
@@ -512,7 +520,7 @@ public:
     {
         if(actionServerProxies.find(in->actionServerHandle) == actionServerProxies.end())
         {
-            throw exception("invalid action server handle");
+            throw sim::exception("invalid action server handle");
         }
 
         ActionServerProxy *actionServerProxy = actionServerProxies[in->actionServerHandle];
@@ -532,7 +540,7 @@ public:
     {
         if(actionServerProxies.find(in->actionServerHandle) == actionServerProxies.end())
         {
-            throw exception("invalid action server handle");
+            throw sim::exception("invalid action server handle");
         }
 
         ActionServerProxy *actionServerProxy = actionServerProxies[in->actionServerHandle];
@@ -552,7 +560,7 @@ public:
         auto actsrv = boost::any_cast< std::shared_ptr< rclcpp_action::Server< Action > > >(actionServerProxy->action_server);
         auto it = actionServerProxy->goalHandles.find(goalUUID);
         if(it == actionServerProxy->goalHandles.end())
-            throw std::runtime_error((boost::format("goal handle '%s' does not exist") % goalUUIDtoString(goalUUID)).str());
+            throw sim::exception("goal handle '%s' does not exist", goalUUIDtoString(goalUUID));
         auto goalHandleBase = it->second.get();
         return dynamic_cast< rclcpp_action::ServerGoalHandle<Action>* >(goalHandleBase);
     }
@@ -574,7 +582,7 @@ public:
     {
         if(actionServerProxies.find(in->actionServerHandle) == actionServerProxies.end())
         {
-            throw exception("invalid action server handle");
+            throw sim::exception("invalid action server handle");
         }
 
         ActionServerProxy *actionServerProxy = actionServerProxies[in->actionServerHandle];
@@ -591,7 +599,7 @@ public:
     {
         if(actionServerProxies.find(in->actionServerHandle) == actionServerProxies.end())
         {
-            throw exception("invalid action server handle");
+            throw sim::exception("invalid action server handle");
         }
 
         ActionServerProxy *actionServerProxy = actionServerProxies[in->actionServerHandle];
@@ -610,7 +618,7 @@ public:
     {
         if(actionServerProxies.find(in->actionServerHandle) == actionServerProxies.end())
         {
-            throw exception("invalid action server handle");
+            throw sim::exception("invalid action server handle");
         }
 
         ActionServerProxy *actionServerProxy = actionServerProxies[in->actionServerHandle];
@@ -629,7 +637,7 @@ public:
     {
         if(actionServerProxies.find(in->actionServerHandle) == actionServerProxies.end())
         {
-            throw exception("invalid action server handle");
+            throw sim::exception("invalid action server handle");
         }
 
         ActionServerProxy *actionServerProxy = actionServerProxies[in->actionServerHandle];
@@ -648,7 +656,7 @@ public:
     {
         if(actionServerProxies.find(in->actionServerHandle) == actionServerProxies.end())
         {
-            throw exception("invalid action server handle");
+            throw sim::exception("invalid action server handle");
         }
 
         ActionServerProxy *actionServerProxy = actionServerProxies[in->actionServerHandle];
@@ -667,7 +675,7 @@ public:
     {
         if(actionServerProxies.find(in->actionServerHandle) == actionServerProxies.end())
         {
-            throw exception("invalid action server handle");
+            throw sim::exception("invalid action server handle");
         }
 
         ActionServerProxy *actionServerProxy = actionServerProxies[in->actionServerHandle];
@@ -684,7 +692,7 @@ public:
     {
         if(actionServerProxies.find(in->actionServerHandle) == actionServerProxies.end())
         {
-            throw exception("invalid action server handle");
+            throw sim::exception("invalid action server handle");
         }
 
         ActionServerProxy *actionServerProxy = actionServerProxies[in->actionServerHandle];
@@ -701,7 +709,7 @@ public:
     {
         if(actionServerProxies.find(in->actionServerHandle) == actionServerProxies.end())
         {
-            throw exception("invalid action server handle");
+            throw sim::exception("invalid action server handle");
         }
 
         ActionServerProxy *actionServerProxy = actionServerProxies[in->actionServerHandle];
@@ -725,18 +733,18 @@ public:
     {
         std::vector<geometry_msgs::msg::TransformStamped> v;
 
-        simMoveStackItemToTopE(in->_stackID, 0);
-        int i = simGetStackTableInfoE(in->_stackID, 0);
+        sim::moveStackItemToTop(in->_stackID, 0);
+        int i = sim::getStackTableInfo(in->_stackID, 0);
         if(i < 0)
-            throw exception("error reading input argument 1 (origin): expected array");
-        int oldsz = simGetStackSizeE(in->_stackID);
-        simUnfoldStackTableE(in->_stackID);
-        int sz = (simGetStackSizeE(in->_stackID) - oldsz + 1) / 2;
+            throw sim::exception("error reading input argument 1 (origin): expected array");
+        int oldsz = sim::getStackSize(in->_stackID);
+        sim::unfoldStackTable(in->_stackID);
+        int sz = (sim::getStackSize(in->_stackID) - oldsz + 1) / 2;
         for(int i = 0; i < sz; i++)
         {
-            simMoveStackItemToTopE(in->_stackID, oldsz - 1);
+            sim::moveStackItemToTop(in->_stackID, oldsz - 1);
             int j;
-            read__int(in->_stackID, &j);
+            read__int32(in->_stackID, &j);
             simMoveStackItemToTop(in->_stackID, oldsz - 1);
             geometry_msgs::msg::TransformStamped t;
             read__geometry_msgs__msg__TransformStamped(in->_stackID, &t);
@@ -748,6 +756,7 @@ public:
 
     void imageTransportCreateSubscription(imageTransportCreateSubscription_in *in, imageTransportCreateSubscription_out *out)
     {
+#if image_transport_FOUND
         SubscriptionProxy *subscriptionProxy = new SubscriptionProxy();
         subscriptionProxy->destroyAfterSimulationStop = shouldProxyBeDestroyedAfterSimulationStop(in->_scriptID);
         subscriptionProxy->handle = subscriptionProxyNextHandle++;
@@ -761,17 +770,20 @@ public:
 
         if(!subscriptionProxy->imageTransportSubscription)
         {
-            throw exception("failed creation of ROS ImageTransport subscription");
+            throw sim::exception("failed creation of ROS ImageTransport subscription");
         }
 
         out->subscriptionHandle = subscriptionProxy->handle;
+#else
+        throw sim::exception("image_transport not available. please rebuild this plugin.");
+#endif
     }
 
     void imageTransportShutdownSubscription(imageTransportShutdownSubscription_in *in, imageTransportShutdownSubscription_out *out)
     {
         if(subscriptionProxies.find(in->subscriptionHandle) == subscriptionProxies.end())
         {
-            throw exception("invalid subscription handle");
+            throw sim::exception("invalid subscription handle");
         }
 
         SubscriptionProxy *subscriptionProxy = subscriptionProxies[in->subscriptionHandle];
@@ -782,6 +794,7 @@ public:
 
     void imageTransportCreatePublisher(imageTransportCreatePublisher_in *in, imageTransportCreatePublisher_out *out)
     {
+#if image_transport_FOUND
         PublisherProxy *publisherProxy = new PublisherProxy();
         publisherProxy->destroyAfterSimulationStop = shouldProxyBeDestroyedAfterSimulationStop(in->_scriptID);
         publisherProxy->handle = publisherProxyNextHandle++;
@@ -793,30 +806,38 @@ public:
 
         if(!publisherProxy->imageTransportPublisher)
         {
-            throw exception("failed creation of ROS ImageTransport publisher");
+            throw sim::exception("failed creation of ROS ImageTransport publisher");
         }
 
         out->publisherHandle = publisherProxy->handle;
+#else
+        throw sim::exception("image_transport not available. please rebuild this plugin.");
+#endif
     }
 
     void imageTransportShutdownPublisher(imageTransportShutdownPublisher_in *in, imageTransportShutdownPublisher_out *out)
     {
+#if image_transport_FOUND
         if(publisherProxies.find(in->publisherHandle) == publisherProxies.end())
         {
-            throw exception("invalid publisher handle");
+            throw sim::exception("invalid publisher handle");
         }
 
         PublisherProxy *publisherProxy = publisherProxies[in->publisherHandle];
         //publisherProxy->imageTransportPublisher.shutdown();
         publisherProxies.erase(publisherProxy->handle);
         delete publisherProxy;
+#else
+        throw sim::exception("image_transport not available. please rebuild this plugin.");
+#endif
     }
 
     void imageTransportPublish(imageTransportPublish_in *in, imageTransportPublish_out *out)
     {
+#if image_transport_FOUND
         if(publisherProxies.find(in->publisherHandle) == publisherProxies.end())
         {
-            throw exception("invalid publisher handle");
+            throw sim::exception("invalid publisher handle");
         }
 
         PublisherProxy *publisherProxy = publisherProxies[in->publisherHandle];
@@ -845,6 +866,9 @@ public:
         }
 
         publisherProxy->imageTransportPublisher.publish(image_msg);
+#else
+        throw sim::exception("image_transport not available. please rebuild this plugin.");
+#endif
     }
 
     void getTime(getTime_in *in, getTime_out *out)
@@ -975,17 +999,19 @@ public:
         if(node_name) simReleaseBuffer(node_name);
 
         tfbr = new tf2_ros::TransformBroadcaster(node);
+#if image_transport_FOUND
         imtr = new image_transport::ImageTransport(node);
+#endif
 
         params_client = std::make_shared<rclcpp::SyncParametersClient>(node);
         while(!params_client->wait_for_service(1s))
         {
             if(!rclcpp::ok())
             {
-                log(sim_verbosity_errors, "Interrupted while waiting for parameters service");
+                sim::addLog(sim_verbosity_errors, "Interrupted while waiting for parameters service");
                 return false;
             }
-            log(sim_verbosity_debug, "Parameters service not available. Waiting for it...");
+            sim::addLog(sim_verbosity_debug, "Parameters service not available. Waiting for it...");
         }
 
         return true;
@@ -997,7 +1023,9 @@ public:
         params_client = nullptr;
         node = nullptr;
 
+#if image_transport_FOUND
         delete imtr;
+#endif
         delete tfbr;
     }
 
@@ -1023,6 +1051,7 @@ public:
                 shutdownSubscription_out out1;
                 shutdownSubscription(&in1, &out1);
             }
+#if image_transport_FOUND
             if(subscriptionProxy->imageTransportSubscription)
             {
                 imageTransportShutdownSubscription_in in1;
@@ -1030,6 +1059,7 @@ public:
                 imageTransportShutdownSubscription_out out1;
                 imageTransportShutdownSubscription(&in1, &out1);
             }
+#endif
         }
     }
 
@@ -1055,6 +1085,7 @@ public:
                 shutdownPublisher_out out1;
                 shutdownPublisher(&in1, &out1);
             }
+#if image_transport_FOUND
             if(publisherProxy->imageTransportPublisher)
             {
                 imageTransportShutdownPublisher_in in1;
@@ -1062,6 +1093,7 @@ public:
                 imageTransportShutdownPublisher_out out1;
                 imageTransportShutdownPublisher(&in1, &out1);
             }
+#endif
         }
     }
 
@@ -1166,7 +1198,9 @@ private:
     rclcpp::SyncParametersClient::SharedPtr params_client = nullptr;
 
     tf2_ros::TransformBroadcaster *tfbr = nullptr;
+#if image_transport_FOUND
     image_transport::ImageTransport *imtr = nullptr;
+#endif
 
     int subscriptionProxyNextHandle = 3562;
     int publisherProxyNextHandle = 7980;

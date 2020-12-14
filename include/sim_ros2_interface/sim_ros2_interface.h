@@ -12,7 +12,9 @@
 
 #include "config.h"
 
+#if image_transport_FOUND
 #include <image_transport/image_transport.hpp>
+#endif
 
 #define PLUGIN_NAME "Ros2Interface"
 #define PLUGIN_VERSION 5
@@ -37,8 +39,10 @@ struct SubscriptionProxy : Proxy
     std::string topicType;
     ScriptCallback topicCallback;
     boost::any subscription;
+#if image_transport_FOUND
     image_transport::Subscriber imageTransportSubscription;
-    WriteOptions wr_opt;
+#endif
+    ROS2WriteOptions wr_opt;
 };
 
 struct PublisherProxy : Proxy
@@ -47,8 +51,10 @@ struct PublisherProxy : Proxy
     std::string topicName;
     std::string topicType;
     boost::any publisher;
+#if image_transport_FOUND
     image_transport::Publisher imageTransportPublisher;
-    ReadOptions rd_opt;
+#endif
+    ROS2ReadOptions rd_opt;
 };
 
 struct ClientProxy : Proxy
@@ -57,8 +63,8 @@ struct ClientProxy : Proxy
     std::string serviceName;
     std::string serviceType;
     boost::any client;
-    ReadOptions rd_opt;
-    WriteOptions wr_opt;
+    ROS2ReadOptions rd_opt;
+    ROS2WriteOptions wr_opt;
 };
 
 struct ServiceProxy : Proxy
@@ -68,8 +74,8 @@ struct ServiceProxy : Proxy
     std::string serviceType;
     ScriptCallback serviceCallback;
     boost::any service;
-    ReadOptions rd_opt;
-    WriteOptions wr_opt;
+    ROS2ReadOptions rd_opt;
+    ROS2WriteOptions wr_opt;
 };
 
 struct ActionClientProxy : Proxy
@@ -82,8 +88,8 @@ struct ActionClientProxy : Proxy
     ScriptCallback resultCallback;
     boost::any action_client;
     boost::any last_goal_handle;
-    ReadOptions rd_opt;
-    WriteOptions wr_opt;
+    ROS2ReadOptions rd_opt;
+    ROS2WriteOptions wr_opt;
 };
 
 struct ActionServerProxy : Proxy
@@ -96,8 +102,8 @@ struct ActionServerProxy : Proxy
     ScriptCallback handleAcceptedCallback;
     std::unordered_map<rclcpp_action::GoalUUID, std::shared_ptr<rclcpp_action::ServerGoalHandleBase> > goalHandles;
     boost::any action_server;
-    ReadOptions rd_opt;
-    WriteOptions wr_opt;
+    ROS2ReadOptions rd_opt;
+    ROS2WriteOptions wr_opt;
 };
 
 #include <stubs.h>
