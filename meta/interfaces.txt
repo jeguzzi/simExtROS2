@@ -1,6 +1,7 @@
 builtin_interfaces/msg/Duration
 builtin_interfaces/msg/Time
 geometry_msgs/msg/Quaternion
+geometry_msgs/msg/QuaternionStamped
 geometry_msgs/msg/Transform
 geometry_msgs/msg/TransformStamped
 geometry_msgs/msg/Vector3
@@ -28,3 +29,8 @@ std_srvs/srv/SetBool
 std_srvs/srv/Trigger
 example_interfaces/srv/AddTwoInts
 example_interfaces/action/Fibonacci
+led_strip_msgs/msg/ColorBlob
+led_strip_msgs/msg/ColorArray
+conveyor_msgs/msg/PackageList
+conveyor_msgs/msg/Package
+conveyor_msgs/msg/PositionOnStrip
