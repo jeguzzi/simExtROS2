@@ -44,7 +44,7 @@ function simROS2.importInterface(name)
 end
 
 function simROS2.log(verbosity,msg)
-    sim.addLog(verbosity,msg)
+    --sim.addLog('ROS2Interface',verbosity,msg)
 end
 
 function simROS2.__renamed(old,new)
