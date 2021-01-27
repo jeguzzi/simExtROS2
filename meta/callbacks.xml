@@ -680,6 +680,28 @@
         <return>
         </return>
     </command>
+    <command name="getTransform">
+        <description>Get the TF transformation between frames.</description>
+        <categories>
+            <category name="tf" />
+        </categories>
+        <see-also>
+            <!--command name="..." /-->
+        </see-also>
+        <params>
+            <param name="target_frame" type="string" skip="false">
+                <description>the name of the target frame</description>
+            </param>
+            <param name="source_frame" type="string" skip="false">
+                <description>the name of the source frame</description>
+            </param>
+        </params>
+        <return>
+          <param name="transform" type="table" skip="true">
+              <description>The TF transformation between the two frames</description>
+          </param>
+        </return>
+    </command>
     <command name="imageTransportCreateSubscription">
         <description>Create a subscription using ImageTransport.</description>
         <categories>
