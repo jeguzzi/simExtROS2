@@ -31,6 +31,8 @@ example_interfaces/srv/AddTwoInts
 example_interfaces/action/Fibonacci
 led_strip_msgs/msg/ColorBlob
 led_strip_msgs/msg/ColorArray
+led_strip_msgs/msg/LedStrip
+led_strip_msgs/msg/LedStrips
 conveyor_msgs/msg/PackageList
 conveyor_msgs/msg/Package
 conveyor_msgs/msg/PositionOnStrip
