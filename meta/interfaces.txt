@@ -33,7 +33,9 @@ led_strip_msgs/msg/ColorBlob
 led_strip_msgs/msg/ColorArray
 led_strip_msgs/msg/LedStrip
 led_strip_msgs/msg/LedStrips
+led_strip_msgs/msg/LedEffect
 led_strip_msgs/srv/SetBrightness
 conveyor_msgs/msg/PackageList
 conveyor_msgs/msg/Package
 conveyor_msgs/msg/PositionOnStrip
+conveyor_msgs/msg/PackageUIDList
