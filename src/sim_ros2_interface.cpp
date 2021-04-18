@@ -1,3 +1,4 @@
+#include <simPlusPlus/Handle.h>
 #include <simPlusPlus/Plugin.h>
 #include <sim_ros2_interface.h>
 
@@ -70,7 +71,64 @@ public:
 
   void onSimulationAboutToStart() { previousStopSimulationRequestCounter = -1; }
 
-  void onSimulationEnded() { shutdownTransientProxies(); }
+  void onScriptStateDestroyed(int scriptID) {
+    for (auto subscriptionProxy : subscriptionHandles.find(scriptID)) {
+      if (!subscriptionProxy->subscription.empty()) {
+        shutdownSubscription_in in1;
+        in1.subscriptionHandle = subscriptionProxy->handle;
+        shutdownSubscription_out out1;
+        shutdownSubscription(&in1, &out1);
+      }
+#if image_transport_FOUND
+      if (subscriptionProxy->imageTransportSubscription) {
+        imageTransportShutdownSubscription_in in1;
+        in1.subscriptionHandle = subscriptionProxy->handle;
+        imageTransportShutdownSubscription_out out1;
+        imageTransportShutdownSubscription(&in1, &out1);
+      }
+#endif
+    }
+    for (auto publisherProxy : publisherHandles.find(scriptID)) {
+      if (!publisherProxy->publisher.empty()) {
+        shutdownPublisher_in in1;
+        in1.publisherHandle = publisherProxy->handle;
+        shutdownPublisher_out out1;
+        shutdownPublisher(&in1, &out1);
+      }
+#if image_transport_FOUND
+      if (publisherProxy->imageTransportPublisher) {
+        imageTransportShutdownPublisher_in in1;
+        in1.publisherHandle = publisherProxy->handle;
+        imageTransportShutdownPublisher_out out1;
+        imageTransportShutdownPublisher(&in1, &out1);
+      }
+#endif
+    }
+    for (auto clientProxy : clientHandles.find(scriptID)) {
+      shutdownClient_in in1;
+      in1.clientHandle = clientProxy->handle;
+      shutdownClient_out out1;
+      shutdownClient(&in1, &out1);
+    }
+    for (auto serviceProxy : serviceHandles.find(scriptID)) {
+      shutdownService_in in1;
+      in1.serviceHandle = serviceProxy->handle;
+      shutdownService_out out1;
+      shutdownService(&in1, &out1);
+    }
+    for (auto actionClientProxy : actionClientHandles.find(scriptID)) {
+      shutdownActionClient_in in1;
+      in1.actionClientHandle = actionClientProxy->handle;
+      shutdownActionClient_out out1;
+      shutdownActionClient(&in1, &out1);
+    }
+    for (auto actionServerProxy : actionServerHandles.find(scriptID)) {
+      shutdownActionServer_in in1;
+      in1.actionServerHandle = actionServerProxy->handle;
+      shutdownActionServer_out out1;
+      shutdownActionServer(&in1, &out1);
+    }
+  }
 
   bool shouldProxyBeDestroyedAfterSimulationStop(int scriptID) {
     if (simGetSimulationState() == sim_simulation_stopped)
@@ -131,14 +189,10 @@ public:
   void createSubscription(createSubscription_in *in,
                           createSubscription_out *out) {
     SubscriptionProxy *subscriptionProxy = new SubscriptionProxy();
-    subscriptionProxy->destroyAfterSimulationStop =
-        shouldProxyBeDestroyedAfterSimulationStop(in->_scriptID);
-    subscriptionProxy->handle = subscriptionProxyNextHandle++;
     subscriptionProxy->topicName = in->topicName;
     subscriptionProxy->topicType = in->topicType;
-    subscriptionProxy->topicCallback.scriptId = in->_scriptID;
+    subscriptionProxy->topicCallback.scriptId = in->_.scriptID;
     subscriptionProxy->topicCallback.name = in->topicCallback;
-    subscriptionProxies[subscriptionProxy->handle] = subscriptionProxy;
 
     if (0) {
     }
@@ -147,18 +201,14 @@ public:
       throw unsupported_type("message", subscriptionProxy->topicType);
     }
 
-    out->subscriptionHandle = subscriptionProxy->handle;
+    out->subscriptionHandle = subscriptionProxy->handle =
+        subscriptionHandles.add(subscriptionProxy, in->_.scriptID);
   }
 
   void shutdownSubscription(shutdownSubscription_in *in,
                             shutdownSubscription_out *out) {
-    if (subscriptionProxies.find(in->subscriptionHandle) ==
-        subscriptionProxies.end()) {
-      throw sim::exception("invalid subscription handle");
-    }
-
     SubscriptionProxy *subscriptionProxy =
-        subscriptionProxies[in->subscriptionHandle];
+        subscriptionHandles.get(in->subscriptionHandle);
 
     if (0) {
     }
@@ -167,31 +217,21 @@ public:
       throw unsupported_type("message", subscriptionProxy->topicType);
     }
 
-    subscriptionProxies.erase(subscriptionProxy->handle);
-    delete subscriptionProxy;
+    delete subscriptionHandles.remove(subscriptionProxy);
   }
 
   void subscriptionTreatUInt8ArrayAsString(
       subscriptionTreatUInt8ArrayAsString_in *in,
       subscriptionTreatUInt8ArrayAsString_out *out) {
-    if (subscriptionProxies.find(in->subscriptionHandle) ==
-        subscriptionProxies.end()) {
-      throw sim::exception("invalid subscription handle");
-    }
-
     SubscriptionProxy *subscriptionProxy =
-        subscriptionProxies[in->subscriptionHandle];
+        subscriptionHandles.get(in->subscriptionHandle);
     subscriptionProxy->wr_opt.uint8array_as_string = true;
   }
 
   void createPublisher(createPublisher_in *in, createPublisher_out *out) {
     PublisherProxy *publisherProxy = new PublisherProxy();
-    publisherProxy->destroyAfterSimulationStop =
-        shouldProxyBeDestroyedAfterSimulationStop(in->_scriptID);
-    publisherProxy->handle = publisherProxyNextHandle++;
     publisherProxy->topicName = in->topicName;
     publisherProxy->topicType = in->topicType;
-    publisherProxies[publisherProxy->handle] = publisherProxy;
 
     if (0) {
     }
@@ -200,15 +240,12 @@ public:
       throw unsupported_type("message", publisherProxy->topicType);
     }
 
-    out->publisherHandle = publisherProxy->handle;
+    out->publisherHandle = publisherProxy->handle =
+        publisherHandles.add(publisherProxy, in->_.scriptID);
   }
 
   void shutdownPublisher(shutdownPublisher_in *in, shutdownPublisher_out *out) {
-    if (publisherProxies.find(in->publisherHandle) == publisherProxies.end()) {
-      throw sim::exception("invalid publisher handle");
-    }
-
-    PublisherProxy *publisherProxy = publisherProxies[in->publisherHandle];
+    PublisherProxy *publisherProxy = publisherHandles.get(in->publisherHandle);
 
     if (0) {
     }
@@ -217,29 +254,20 @@ public:
       throw unsupported_type("message", publisherProxy->topicType);
     }
 
-    publisherProxies.erase(publisherProxy->handle);
-    delete publisherProxy;
+    delete publisherHandles.remove(publisherProxy);
   }
 
   void
   publisherTreatUInt8ArrayAsString(publisherTreatUInt8ArrayAsString_in *in,
                                    publisherTreatUInt8ArrayAsString_out *out) {
-    if (publisherProxies.find(in->publisherHandle) == publisherProxies.end()) {
-      throw sim::exception("invalid publisher handle");
-    }
-
-    PublisherProxy *publisherProxy = publisherProxies[in->publisherHandle];
+    PublisherProxy *publisherProxy = publisherHandles.get(in->publisherHandle);
     publisherProxy->rd_opt.uint8array_as_string = true;
   }
 
   void publish(publish_in *in, publish_out *out) {
-    if (publisherProxies.find(in->publisherHandle) == publisherProxies.end()) {
-      throw sim::exception("invalid publisher handle");
-    }
+    PublisherProxy *publisherProxy = publisherHandles.get(in->publisherHandle);
 
-    PublisherProxy *publisherProxy = publisherProxies[in->publisherHandle];
-
-    simMoveStackItemToTop(in->_stackID, 0);
+    simMoveStackItemToTop(in->_.stackID, 0);
 
     if (0) {
     }
@@ -251,12 +279,8 @@ public:
 
   void createClient(createClient_in *in, createClient_out *out) {
     ClientProxy *clientProxy = new ClientProxy();
-    clientProxy->destroyAfterSimulationStop =
-        shouldProxyBeDestroyedAfterSimulationStop(in->_scriptID);
-    clientProxy->handle = clientProxyNextHandle++;
     clientProxy->serviceName = in->serviceName;
     clientProxy->serviceType = in->serviceType;
-    clientProxies[clientProxy->handle] = clientProxy;
 
     if (0) {
     }
@@ -265,15 +289,12 @@ public:
       throw unsupported_type("service", clientProxy->serviceType);
     }
 
-    out->clientHandle = clientProxy->handle;
+    out->clientHandle = clientProxy->handle =
+        clientHandles.add(clientProxy, in->_.scriptID);
   }
 
   void shutdownClient(shutdownClient_in *in, shutdownClient_out *out) {
-    if (clientProxies.find(in->clientHandle) == clientProxies.end()) {
-      throw sim::exception("invalid service client handle");
-    }
-
-    ClientProxy *clientProxy = clientProxies[in->clientHandle];
+    ClientProxy *clientProxy = clientHandles.get(in->clientHandle);
 
     if (0) {
     }
@@ -282,27 +303,18 @@ public:
       throw unsupported_type("service", clientProxy->serviceType);
     }
 
-    clientProxies.erase(clientProxy->handle);
-    delete clientProxy;
+    delete clientHandles.remove(clientProxy);
   }
 
   void clientTreatUInt8ArrayAsString(clientTreatUInt8ArrayAsString_in *in,
                                      clientTreatUInt8ArrayAsString_out *out) {
-    if (clientProxies.find(in->clientHandle) == clientProxies.end()) {
-      throw sim::exception("invalid service client handle");
-    }
-
-    ClientProxy *clientProxy = clientProxies[in->clientHandle];
+    ClientProxy *clientProxy = clientHandles.get(in->clientHandle);
     clientProxy->rd_opt.uint8array_as_string = true;
     clientProxy->wr_opt.uint8array_as_string = true;
   }
 
   void waitForService(waitForService_in *in, waitForService_out *out) {
-    if (clientProxies.find(in->clientHandle) == clientProxies.end()) {
-      throw sim::exception("invalid service client handle");
-    }
-
-    ClientProxy *clientProxy = clientProxies[in->clientHandle];
+    ClientProxy *clientProxy = clientHandles.get(in->clientHandle);
 
     if (0) {
     }
@@ -313,13 +325,9 @@ public:
   }
 
   void call(call_in *in, call_out *out) {
-    if (clientProxies.find(in->clientHandle) == clientProxies.end()) {
-      throw sim::exception("invalid service client handle");
-    }
+    ClientProxy *clientProxy = clientHandles.get(in->clientHandle);
 
-    ClientProxy *clientProxy = clientProxies[in->clientHandle];
-
-    simMoveStackItemToTop(in->_stackID, 0);
+    simMoveStackItemToTop(in->_.stackID, 0);
 
     if (0) {
     }
@@ -331,14 +339,10 @@ public:
 
   void createService(createService_in *in, createService_out *out) {
     ServiceProxy *serviceProxy = new ServiceProxy();
-    serviceProxy->destroyAfterSimulationStop =
-        shouldProxyBeDestroyedAfterSimulationStop(in->_scriptID);
-    serviceProxy->handle = serviceProxyNextHandle++;
     serviceProxy->serviceName = in->serviceName;
     serviceProxy->serviceType = in->serviceType;
-    serviceProxy->serviceCallback.scriptId = in->_scriptID;
+    serviceProxy->serviceCallback.scriptId = in->_.scriptID;
     serviceProxy->serviceCallback.name = in->serviceCallback;
-    serviceProxies[serviceProxy->handle] = serviceProxy;
 
     if (0) {
     }
@@ -347,15 +351,12 @@ public:
       throw unsupported_type("service", serviceProxy->serviceType);
     }
 
-    out->serviceHandle = serviceProxy->handle;
+    out->serviceHandle = serviceProxy->handle =
+        serviceHandles.add(serviceProxy, in->_.scriptID);
   }
 
   void shutdownService(shutdownService_in *in, shutdownService_out *out) {
-    if (serviceProxies.find(in->serviceHandle) == serviceProxies.end()) {
-      throw sim::exception("invalid service handle");
-    }
-
-    ServiceProxy *serviceProxy = serviceProxies[in->serviceHandle];
+    ServiceProxy *serviceProxy = serviceHandles.get(in->serviceHandle);
 
     if (0) {
     }
@@ -364,17 +365,12 @@ public:
       throw unsupported_type("service", serviceProxy->serviceType);
     }
 
-    serviceProxies.erase(serviceProxy->handle);
-    delete serviceProxy;
+    delete serviceHandles.remove(serviceProxy);
   }
 
   void serviceTreatUInt8ArrayAsString(serviceTreatUInt8ArrayAsString_in *in,
                                       serviceTreatUInt8ArrayAsString_out *out) {
-    if (serviceProxies.find(in->serviceHandle) == serviceProxies.end()) {
-      throw sim::exception("invalid service handle");
-    }
-
-    ServiceProxy *serviceProxy = serviceProxies[in->serviceHandle];
+    ServiceProxy *serviceProxy = serviceHandles.get(in->serviceHandle);
     serviceProxy->rd_opt.uint8array_as_string = true;
     serviceProxy->wr_opt.uint8array_as_string = true;
   }
@@ -382,18 +378,14 @@ public:
   void createActionClient(createActionClient_in *in,
                           createActionClient_out *out) {
     ActionClientProxy *actionClientProxy = new ActionClientProxy();
-    actionClientProxy->destroyAfterSimulationStop =
-        shouldProxyBeDestroyedAfterSimulationStop(in->_scriptID);
-    actionClientProxy->handle = actionClientProxyNextHandle++;
     actionClientProxy->actionName = in->actionName;
     actionClientProxy->actionType = in->actionType;
-    actionClientProxy->goalResponseCallback.scriptId = in->_scriptID;
+    actionClientProxy->goalResponseCallback.scriptId = in->_.scriptID;
     actionClientProxy->goalResponseCallback.name = in->goalResponseCallback;
-    actionClientProxy->feedbackCallback.scriptId = in->_scriptID;
+    actionClientProxy->feedbackCallback.scriptId = in->_.scriptID;
     actionClientProxy->feedbackCallback.name = in->feedbackCallback;
-    actionClientProxy->resultCallback.scriptId = in->_scriptID;
+    actionClientProxy->resultCallback.scriptId = in->_.scriptID;
     actionClientProxy->resultCallback.name = in->resultCallback;
-    actionClientProxies[actionClientProxy->handle] = actionClientProxy;
 
     if (0) {
     }
@@ -402,18 +394,14 @@ public:
       throw unsupported_type("action", actionClientProxy->actionType);
     }
 
-    out->actionClientHandle = actionClientProxy->handle;
+    out->actionClientHandle = actionClientProxy->handle =
+        actionClientHandles.add(actionClientProxy, in->_.scriptID);
   }
 
   void shutdownActionClient(shutdownActionClient_in *in,
                             shutdownActionClient_out *out) {
-    if (actionClientProxies.find(in->actionClientHandle) ==
-        actionClientProxies.end()) {
-      throw sim::exception("invalid action client handle");
-    }
-
     ActionClientProxy *actionClientProxy =
-        actionClientProxies[in->actionClientHandle];
+        actionClientHandles.get(in->actionClientHandle);
 
     if (0) {
     }
@@ -422,34 +410,23 @@ public:
       throw unsupported_type("action", actionClientProxy->actionType);
     }
 
-    actionClientProxies.erase(actionClientProxy->handle);
-    delete actionClientProxy;
+    delete actionClientHandles.remove(actionClientProxy);
   }
 
   void actionClientTreatUInt8ArrayAsString(
       actionClientTreatUInt8ArrayAsString_in *in,
       actionClientTreatUInt8ArrayAsString_out *out) {
-    if (actionClientProxies.find(in->actionClientHandle) ==
-        actionClientProxies.end()) {
-      throw sim::exception("invalid action client handle");
-    }
-
     ActionClientProxy *actionClientProxy =
-        actionClientProxies[in->actionClientHandle];
+        actionClientHandles.get(in->actionClientHandle);
     actionClientProxy->rd_opt.uint8array_as_string = true;
     actionClientProxy->wr_opt.uint8array_as_string = true;
   }
 
   void sendGoal(sendGoal_in *in, sendGoal_out *out) {
-    if (actionClientProxies.find(in->actionClientHandle) ==
-        actionClientProxies.end()) {
-      throw sim::exception("invalid action client handle");
-    }
-
     ActionClientProxy *actionClientProxy =
-        actionClientProxies[in->actionClientHandle];
+        actionClientHandles.get(in->actionClientHandle);
 
-    simMoveStackItemToTop(in->_stackID, 0);
+    simMoveStackItemToTop(in->_.stackID, 0);
 
     if (0) {
     }
@@ -460,13 +437,8 @@ public:
   }
 
   void cancelLastGoal(cancelLastGoal_in *in, cancelLastGoal_out *out) {
-    if (actionClientProxies.find(in->actionClientHandle) ==
-        actionClientProxies.end()) {
-      throw sim::exception("invalid action client handle");
-    }
-
     ActionClientProxy *actionClientProxy =
-        actionClientProxies[in->actionClientHandle];
+        actionClientHandles.get(in->actionClientHandle);
 
     if (0) {
     }
@@ -479,18 +451,14 @@ public:
   void createActionServer(createActionServer_in *in,
                           createActionServer_out *out) {
     ActionServerProxy *actionServerProxy = new ActionServerProxy();
-    actionServerProxy->destroyAfterSimulationStop =
-        shouldProxyBeDestroyedAfterSimulationStop(in->_scriptID);
-    actionServerProxy->handle = actionServerProxyNextHandle++;
     actionServerProxy->actionName = in->actionName;
     actionServerProxy->actionType = in->actionType;
-    actionServerProxy->handleGoalCallback.scriptId = in->_scriptID;
+    actionServerProxy->handleGoalCallback.scriptId = in->_.scriptID;
     actionServerProxy->handleGoalCallback.name = in->handleGoalCallback;
-    actionServerProxy->handleCancelCallback.scriptId = in->_scriptID;
+    actionServerProxy->handleCancelCallback.scriptId = in->_.scriptID;
     actionServerProxy->handleCancelCallback.name = in->handleCancelCallback;
-    actionServerProxy->handleAcceptedCallback.scriptId = in->_scriptID;
+    actionServerProxy->handleAcceptedCallback.scriptId = in->_.scriptID;
     actionServerProxy->handleAcceptedCallback.name = in->handleAcceptedCallback;
-    actionServerProxies[actionServerProxy->handle] = actionServerProxy;
 
     if (0) {
     }
@@ -499,18 +467,14 @@ public:
       throw unsupported_type("action", actionServerProxy->actionType);
     }
 
-    out->actionServerHandle = actionServerProxy->handle;
+    out->actionServerHandle = actionServerProxy->handle =
+        actionServerHandles.add(actionServerProxy, in->_.scriptID);
   }
 
   void shutdownActionServer(shutdownActionServer_in *in,
                             shutdownActionServer_out *out) {
-    if (actionServerProxies.find(in->actionServerHandle) ==
-        actionServerProxies.end()) {
-      throw sim::exception("invalid action server handle");
-    }
-
     ActionServerProxy *actionServerProxy =
-        actionServerProxies[in->actionServerHandle];
+        actionServerHandles.get(in->actionServerHandle);
 
     if (0) {
     }
@@ -519,20 +483,14 @@ public:
       throw unsupported_type("action", actionServerProxy->actionType);
     }
 
-    actionServerProxies.erase(actionServerProxy->handle);
-    delete actionServerProxy;
+    delete actionServerHandles.remove(actionServerProxy);
   }
 
   void actionServerTreatUInt8ArrayAsString(
       actionServerTreatUInt8ArrayAsString_in *in,
       actionServerTreatUInt8ArrayAsString_out *out) {
-    if (actionServerProxies.find(in->actionServerHandle) ==
-        actionServerProxies.end()) {
-      throw sim::exception("invalid action server handle");
-    }
-
     ActionServerProxy *actionServerProxy =
-        actionServerProxies[in->actionServerHandle];
+        actionServerHandles.get(in->actionServerHandle);
     actionServerProxy->rd_opt.uint8array_as_string = true;
     actionServerProxy->wr_opt.uint8array_as_string = true;
   }
@@ -575,13 +533,8 @@ public:
 
   void actionServerPublishFeedback(actionServerPublishFeedback_in *in,
                                    actionServerPublishFeedback_out *out) {
-    if (actionServerProxies.find(in->actionServerHandle) ==
-        actionServerProxies.end()) {
-      throw sim::exception("invalid action server handle");
-    }
-
     ActionServerProxy *actionServerProxy =
-        actionServerProxies[in->actionServerHandle];
+        actionServerHandles.get(in->actionServerHandle);
 
     if (0) {
     }
@@ -593,13 +546,8 @@ public:
 
   void actionServerActionAbort(actionServerActionAbort_in *in,
                                actionServerActionAbort_out *out) {
-    if (actionServerProxies.find(in->actionServerHandle) ==
-        actionServerProxies.end()) {
-      throw sim::exception("invalid action server handle");
-    }
-
     ActionServerProxy *actionServerProxy =
-        actionServerProxies[in->actionServerHandle];
+        actionServerHandles.get(in->actionServerHandle);
 
     if (0) {
     }
@@ -613,13 +561,8 @@ public:
 
   void actionServerActionSucceed(actionServerActionSucceed_in *in,
                                  actionServerActionSucceed_out *out) {
-    if (actionServerProxies.find(in->actionServerHandle) ==
-        actionServerProxies.end()) {
-      throw sim::exception("invalid action server handle");
-    }
-
     ActionServerProxy *actionServerProxy =
-        actionServerProxies[in->actionServerHandle];
+        actionServerHandles.get(in->actionServerHandle);
 
     if (0) {
     }
@@ -633,13 +576,8 @@ public:
 
   void actionServerActionCanceled(actionServerActionCanceled_in *in,
                                   actionServerActionCanceled_out *out) {
-    if (actionServerProxies.find(in->actionServerHandle) ==
-        actionServerProxies.end()) {
-      throw sim::exception("invalid action server handle");
-    }
-
     ActionServerProxy *actionServerProxy =
-        actionServerProxies[in->actionServerHandle];
+        actionServerHandles.get(in->actionServerHandle);
 
     if (0) {
     }
@@ -653,13 +591,8 @@ public:
 
   void actionServerActionExecute(actionServerActionExecute_in *in,
                                  actionServerActionExecute_out *out) {
-    if (actionServerProxies.find(in->actionServerHandle) ==
-        actionServerProxies.end()) {
-      throw sim::exception("invalid action server handle");
-    }
-
     ActionServerProxy *actionServerProxy =
-        actionServerProxies[in->actionServerHandle];
+        actionServerHandles.get(in->actionServerHandle);
 
     if (0) {
     }
@@ -673,13 +606,8 @@ public:
 
   void actionServerActionIsCanceling(actionServerActionIsCanceling_in *in,
                                      actionServerActionIsCanceling_out *out) {
-    if (actionServerProxies.find(in->actionServerHandle) ==
-        actionServerProxies.end()) {
-      throw sim::exception("invalid action server handle");
-    }
-
     ActionServerProxy *actionServerProxy =
-        actionServerProxies[in->actionServerHandle];
+        actionServerHandles.get(in->actionServerHandle);
 
     if (0) {
     }
@@ -691,13 +619,8 @@ public:
 
   void actionServerActionIsActive(actionServerActionIsActive_in *in,
                                   actionServerActionIsActive_out *out) {
-    if (actionServerProxies.find(in->actionServerHandle) ==
-        actionServerProxies.end()) {
-      throw sim::exception("invalid action server handle");
-    }
-
     ActionServerProxy *actionServerProxy =
-        actionServerProxies[in->actionServerHandle];
+        actionServerHandles.get(in->actionServerHandle);
 
     if (0) {
     }
@@ -709,13 +632,8 @@ public:
 
   void actionServerActionIsExecuting(actionServerActionIsExecuting_in *in,
                                      actionServerActionIsExecuting_out *out) {
-    if (actionServerProxies.find(in->actionServerHandle) ==
-        actionServerProxies.end()) {
-      throw sim::exception("invalid action server handle");
-    }
-
     ActionServerProxy *actionServerProxy =
-        actionServerProxies[in->actionServerHandle];
+        actionServerHandles.get(in->actionServerHandle);
 
     if (0) {
     }
@@ -727,28 +645,28 @@ public:
 
   void sendTransform(sendTransform_in *in, sendTransform_out *out) {
     geometry_msgs::msg::TransformStamped t;
-    read__geometry_msgs__msg__TransformStamped(in->_stackID, &t);
+    read__geometry_msgs__msg__TransformStamped(in->_.stackID, &t);
     tfbr->sendTransform(t);
   }
 
   void sendTransforms(sendTransforms_in *in, sendTransforms_out *out) {
     std::vector<geometry_msgs::msg::TransformStamped> v;
 
-    sim::moveStackItemToTop(in->_stackID, 0);
-    int i = sim::getStackTableInfo(in->_stackID, 0);
+    sim::moveStackItemToTop(in->_.stackID, 0);
+    int i = sim::getStackTableInfo(in->_.stackID, 0);
     if (i < 0)
       throw sim::exception(
           "error reading input argument 1 (origin): expected array");
-    int oldsz = sim::getStackSize(in->_stackID);
-    sim::unfoldStackTable(in->_stackID);
-    int sz = (sim::getStackSize(in->_stackID) - oldsz + 1) / 2;
+    int oldsz = sim::getStackSize(in->_.stackID);
+    sim::unfoldStackTable(in->_.stackID);
+    int sz = (sim::getStackSize(in->_.stackID) - oldsz + 1) / 2;
     for (int i = 0; i < sz; i++) {
-      sim::moveStackItemToTop(in->_stackID, oldsz - 1);
+      sim::moveStackItemToTop(in->_.stackID, oldsz - 1);
       int j;
-      read__int32(in->_stackID, &j);
-      simMoveStackItemToTop(in->_stackID, oldsz - 1);
+      read__int32(in->_.stackID, &j);
+      simMoveStackItemToTop(in->_.stackID, oldsz - 1);
       geometry_msgs::msg::TransformStamped t;
-      read__geometry_msgs__msg__TransformStamped(in->_stackID, &t);
+      read__geometry_msgs__msg__TransformStamped(in->_.stackID, &t);
       v.push_back(t);
     }
 
@@ -761,7 +679,8 @@ public:
           tf_buffer->lookupTransform(in->target_frame, in->source_frame,
                                      tf2::TimePoint());
       ROS2WriteOptions wo;
-      write__geometry_msgs__msg__TransformStamped(transform, in->_stackID, &wo);
+      write__geometry_msgs__msg__TransformStamped(transform, in->_.stackID,
+                                                  &wo);
     } catch (tf2::LookupException &ex) {
       RCLCPP_WARN(node->get_logger(), "Transform not available: %s", ex.what());
     } catch (tf2::ConnectivityException &ex) {
@@ -774,14 +693,10 @@ public:
                                    imageTransportCreateSubscription_out *out) {
 #if image_transport_FOUND
     SubscriptionProxy *subscriptionProxy = new SubscriptionProxy();
-    subscriptionProxy->destroyAfterSimulationStop =
-        shouldProxyBeDestroyedAfterSimulationStop(in->_scriptID);
-    subscriptionProxy->handle = subscriptionProxyNextHandle++;
     subscriptionProxy->topicName = in->topicName;
     subscriptionProxy->topicType = "@image_transport";
-    subscriptionProxy->topicCallback.scriptId = in->_scriptID;
+    subscriptionProxy->topicCallback.scriptId = in->_.scriptID;
     subscriptionProxy->topicCallback.name = in->topicCallback;
-    subscriptionProxies[subscriptionProxy->handle] = subscriptionProxy;
 
     subscriptionProxy->imageTransportSubscription = imtr->subscribe(
         in->topicName, in->queueSize,
@@ -792,7 +707,8 @@ public:
           "failed creation of ROS ImageTransport subscription");
     }
 
-    out->subscriptionHandle = subscriptionProxy->handle;
+    out->subscriptionHandle = subscriptionProxy->handle =
+        subscriptionHandles.add(subscriptionProxy, in->_.scriptID);
 #else
     throw sim::exception(
         "image_transport not available. please rebuild this plugin.");
@@ -802,28 +718,18 @@ public:
   void imageTransportShutdownSubscription(
       imageTransportShutdownSubscription_in *in,
       imageTransportShutdownSubscription_out *out) {
-    if (subscriptionProxies.find(in->subscriptionHandle) ==
-        subscriptionProxies.end()) {
-      throw sim::exception("invalid subscription handle");
-    }
-
     SubscriptionProxy *subscriptionProxy =
-        subscriptionProxies[in->subscriptionHandle];
+        subscriptionHandles.get(in->subscriptionHandle);
     // subscriptionProxy->imageTransportSubscription.shutdown();
-    subscriptionProxies.erase(subscriptionProxy->handle);
-    delete subscriptionProxy;
+    delete subscriptionHandles.remove(subscriptionProxy);
   }
 
   void imageTransportCreatePublisher(imageTransportCreatePublisher_in *in,
                                      imageTransportCreatePublisher_out *out) {
 #if image_transport_FOUND
     PublisherProxy *publisherProxy = new PublisherProxy();
-    publisherProxy->destroyAfterSimulationStop =
-        shouldProxyBeDestroyedAfterSimulationStop(in->_scriptID);
-    publisherProxy->handle = publisherProxyNextHandle++;
     publisherProxy->topicName = in->topicName;
     publisherProxy->topicType = "@image_transport";
-    publisherProxies[publisherProxy->handle] = publisherProxy;
 
     publisherProxy->imageTransportPublisher =
         imtr->advertise(in->topicName, in->queueSize);
@@ -832,7 +738,8 @@ public:
       throw sim::exception("failed creation of ROS ImageTransport publisher");
     }
 
-    out->publisherHandle = publisherProxy->handle;
+    out->publisherHandle = publisherProxy->handle =
+        publisherHandles.add(publisherProxy, in->_.scriptID);
 #else
     throw sim::exception(
         "image_transport not available. please rebuild this plugin.");
@@ -843,14 +750,9 @@ public:
   imageTransportShutdownPublisher(imageTransportShutdownPublisher_in *in,
                                   imageTransportShutdownPublisher_out *out) {
 #if image_transport_FOUND
-    if (publisherProxies.find(in->publisherHandle) == publisherProxies.end()) {
-      throw sim::exception("invalid publisher handle");
-    }
-
-    PublisherProxy *publisherProxy = publisherProxies[in->publisherHandle];
+    PublisherProxy *publisherProxy = publisherHandles.get(in->publisherHandle);
     // publisherProxy->imageTransportPublisher.shutdown();
-    publisherProxies.erase(publisherProxy->handle);
-    delete publisherProxy;
+    delete publisherHandles.remove(publisherProxy);
 #else
     throw sim::exception(
         "image_transport not available. please rebuild this plugin.");
@@ -860,11 +762,7 @@ public:
   void imageTransportPublish(imageTransportPublish_in *in,
                              imageTransportPublish_out *out) {
 #if image_transport_FOUND
-    if (publisherProxies.find(in->publisherHandle) == publisherProxies.end()) {
-      throw sim::exception("invalid publisher handle");
-    }
-
-    PublisherProxy *publisherProxy = publisherProxies[in->publisherHandle];
+    PublisherProxy *publisherProxy = publisherHandles.get(in->publisherHandle);
 
     sensor_msgs::msg::Image image_msg;
     rclcpp::Clock ros_clock(RCL_ROS_TIME);
@@ -1047,155 +945,6 @@ public:
     delete tf_buffer;
   }
 
-  void shutdownTransientSubscriptions() {
-    std::vector<int> handles;
-
-    for (std::map<int, SubscriptionProxy *>::iterator it =
-             subscriptionProxies.begin();
-         it != subscriptionProxies.end(); ++it) {
-      if (it->second->destroyAfterSimulationStop) {
-        handles.push_back(it->first);
-      }
-    }
-
-    for (std::vector<int>::iterator it = handles.begin(); it != handles.end();
-         ++it) {
-      SubscriptionProxy *subscriptionProxy = subscriptionProxies[*it];
-      if (!subscriptionProxy->subscription.empty()) {
-        shutdownSubscription_in in1;
-        in1.subscriptionHandle = *it;
-        shutdownSubscription_out out1;
-        shutdownSubscription(&in1, &out1);
-      }
-#if image_transport_FOUND
-      if (subscriptionProxy->imageTransportSubscription) {
-        imageTransportShutdownSubscription_in in1;
-        in1.subscriptionHandle = *it;
-        imageTransportShutdownSubscription_out out1;
-        imageTransportShutdownSubscription(&in1, &out1);
-      }
-#endif
-    }
-  }
-
-  void shutdownTransientPublishers() {
-    std::vector<int> handles;
-
-    for (std::map<int, PublisherProxy *>::iterator it =
-             publisherProxies.begin();
-         it != publisherProxies.end(); ++it) {
-      if (it->second->destroyAfterSimulationStop) {
-        handles.push_back(it->first);
-      }
-    }
-
-    for (std::vector<int>::iterator it = handles.begin(); it != handles.end();
-         ++it) {
-      PublisherProxy *publisherProxy = publisherProxies[*it];
-      if (!publisherProxy->publisher.empty()) {
-        shutdownPublisher_in in1;
-        in1.publisherHandle = *it;
-        shutdownPublisher_out out1;
-        shutdownPublisher(&in1, &out1);
-      }
-#if image_transport_FOUND
-      if (publisherProxy->imageTransportPublisher) {
-        imageTransportShutdownPublisher_in in1;
-        in1.publisherHandle = *it;
-        imageTransportShutdownPublisher_out out1;
-        imageTransportShutdownPublisher(&in1, &out1);
-      }
-#endif
-    }
-  }
-
-  void shutdownTransientClients() {
-    std::vector<int> handles;
-
-    for (std::map<int, ClientProxy *>::iterator it = clientProxies.begin();
-         it != clientProxies.end(); ++it) {
-      if (it->second->destroyAfterSimulationStop) {
-        handles.push_back(it->first);
-      }
-    }
-
-    for (std::vector<int>::iterator it = handles.begin(); it != handles.end();
-         ++it) {
-      shutdownClient_in in1;
-      in1.clientHandle = *it;
-      shutdownClient_out out1;
-      shutdownClient(&in1, &out1);
-    }
-  }
-
-  void shutdownTransientServices() {
-    std::vector<int> handles;
-
-    for (std::map<int, ServiceProxy *>::iterator it = serviceProxies.begin();
-         it != serviceProxies.end(); ++it) {
-      if (it->second->destroyAfterSimulationStop) {
-        handles.push_back(it->first);
-      }
-    }
-
-    for (std::vector<int>::iterator it = handles.begin(); it != handles.end();
-         ++it) {
-      shutdownService_in in1;
-      in1.serviceHandle = *it;
-      shutdownService_out out1;
-      shutdownService(&in1, &out1);
-    }
-  }
-
-  void shutdownTransientActionClients() {
-    std::vector<int> handles;
-
-    for (std::map<int, ActionClientProxy *>::iterator it =
-             actionClientProxies.begin();
-         it != actionClientProxies.end(); ++it) {
-      if (it->second->destroyAfterSimulationStop) {
-        handles.push_back(it->first);
-      }
-    }
-
-    for (std::vector<int>::iterator it = handles.begin(); it != handles.end();
-         ++it) {
-      shutdownActionClient_in in1;
-      in1.actionClientHandle = *it;
-      shutdownActionClient_out out1;
-      shutdownActionClient(&in1, &out1);
-    }
-  }
-
-  void shutdownTransientActionServers() {
-    std::vector<int> handles;
-
-    for (std::map<int, ActionServerProxy *>::iterator it =
-             actionServerProxies.begin();
-         it != actionServerProxies.end(); ++it) {
-      if (it->second->destroyAfterSimulationStop) {
-        handles.push_back(it->first);
-      }
-    }
-
-    for (std::vector<int>::iterator it = handles.begin(); it != handles.end();
-         ++it) {
-      shutdownActionServer_in in1;
-      in1.actionServerHandle = *it;
-      shutdownActionServer_out out1;
-      shutdownActionServer(&in1, &out1);
-    }
-  }
-
-  void shutdownTransientProxies() {
-    shutdownTransientSubscriptions();
-    shutdownTransientPublishers();
-    shutdownTransientClients();
-    shutdownTransientServices();
-    shutdownTransientActionClients();
-    shutdownTransientActionServers();
-  }
-
 private:
   int previousStopSimulationRequestCounter = -1;
 
@@ -1209,19 +958,12 @@ private:
   image_transport::ImageTransport *imtr = nullptr;
 #endif
 
-  int subscriptionProxyNextHandle = 3562;
-  int publisherProxyNextHandle = 7980;
-  int clientProxyNextHandle = 26856;
-  int serviceProxyNextHandle = 53749;
-  int actionClientProxyNextHandle = 71848;
-  int actionServerProxyNextHandle = 93012;
-
-  std::map<int, SubscriptionProxy *> subscriptionProxies;
-  std::map<int, PublisherProxy *> publisherProxies;
-  std::map<int, ClientProxy *> clientProxies;
-  std::map<int, ServiceProxy *> serviceProxies;
-  std::map<int, ActionClientProxy *> actionClientProxies;
-  std::map<int, ActionServerProxy *> actionServerProxies;
+  sim::Handles<SubscriptionProxy> subscriptionHandles;
+  sim::Handles<PublisherProxy> publisherHandles;
+  sim::Handles<ClientProxy> clientHandles;
+  sim::Handles<ServiceProxy> serviceHandles;
+  sim::Handles<ActionClientProxy> actionClientHandles;
+  sim::Handles<ActionServerProxy> actionServerHandles;
 };
 
 SIM_PLUGIN(PLUGIN_NAME, PLUGIN_VERSION, Plugin)
