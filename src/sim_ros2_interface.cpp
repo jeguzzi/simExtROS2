@@ -10,6 +10,7 @@ using namespace std::placeholders;
 #include <sensor_msgs/image_encodings.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
 #if image_transport_FOUND
 #include <image_transport/image_transport.hpp>
 #endif
