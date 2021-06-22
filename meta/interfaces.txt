@@ -39,3 +39,5 @@ conveyor_msgs/msg/PackageList
 conveyor_msgs/msg/Package
 conveyor_msgs/msg/PositionOnStrip
 conveyor_msgs/msg/PackageUIDList
+conveyor_msgs/msg/BeltCommand
+conveyor_msgs/srv/SetBeltSpeed
