@@ -4,6 +4,8 @@ geometry_msgs/msg/Quaternion
 geometry_msgs/msg/QuaternionStamped
 geometry_msgs/msg/Transform
 geometry_msgs/msg/TransformStamped
+geometry_msgs/msg/Point
+geometry_msgs/msg/PointStamped
 geometry_msgs/msg/Vector3
 sensor_msgs/msg/Image
 sensor_msgs/msg/PointCloud2
@@ -39,3 +41,4 @@ conveyor_msgs/msg/PackageList
 conveyor_msgs/msg/Package
 conveyor_msgs/msg/PositionOnStrip
 conveyor_msgs/msg/PackageUIDList
+conveyor_msgs/srv/SetBeltSpeed
