@@ -6,7 +6,10 @@ geometry_msgs/msg/Transform
 geometry_msgs/msg/TransformStamped
 geometry_msgs/msg/Point
 geometry_msgs/msg/PointStamped
+geometry_msgs/msg/Pose
+geometry_msgs/msg/PoseStamped
 geometry_msgs/msg/Vector3
+geometry_msgs/msg/Vector3Stamped
 sensor_msgs/msg/Image
 sensor_msgs/msg/PointCloud2
 sensor_msgs/msg/PointField
@@ -31,15 +34,3 @@ std_srvs/srv/SetBool
 std_srvs/srv/Trigger
 example_interfaces/srv/AddTwoInts
 example_interfaces/action/Fibonacci
-led_strip_msgs/msg/ColorBlob
-led_strip_msgs/msg/ColorArray
-led_strip_msgs/msg/LedStrip
-led_strip_msgs/msg/LedStrips
-led_strip_msgs/msg/LedEffect
-led_strip_msgs/srv/SetBrightness
-conveyor_msgs/msg/PackageList
-conveyor_msgs/msg/Package
-conveyor_msgs/msg/PositionOnStrip
-conveyor_msgs/msg/PackageUIDList
-conveyor_msgs/msg/BeltCommand
-conveyor_msgs/srv/SetBeltSpeed
