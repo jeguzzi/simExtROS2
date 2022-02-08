@@ -32,6 +32,8 @@
 
   <depend>led_strip_msgs</depend>
   <depend>conveyor_msgs</depend>
+  <depend>control_msgs</depend>
+  <depend>manipulation_msgs</depend>
 
 
   <test_depend>ament_lint_auto</test_depend>

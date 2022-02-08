@@ -44,6 +44,8 @@ find_package(example_interfaces REQUIRED)
 find_package(image_transport)
 find_package(led_strip_msgs REQUIRED)
 find_package(conveyor_msgs REQUIRED)
+find_package(control_msgs REQUIRED)
+find_package(manipulation_msgs REQUIRED)
 
 if(NOT LIBPLUGIN_DIR)
     if(DEFINED ENV{COPPELIASIM_ROOT_DIR})
@@ -114,6 +116,8 @@ ament_target_dependencies(
     "example_interfaces"
     "led_strip_msgs"
     "conveyor_msgs"
+    "manipulation_msgs"
+    "control_msgs"
 )
 if(image_transport_FOUND)
     ament_target_dependencies(
