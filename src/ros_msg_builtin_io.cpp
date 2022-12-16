@@ -232,7 +232,7 @@ void read__duration(int stack, rclcpp::Duration *value, const ROS2ReadOptions *o
     simDouble v;
     if(sim::getStackDoubleValue(stack, &v) == 1)
     {
-        *value = rclcpp::Duration(v);
+        *value = rclcpp::Duration::from_seconds(v);
         sim::popStackItem(stack, 1);
     }
     else
@@ -373,4 +373,3 @@ rclcpp_action::GoalUUID goalUUIDfromString(const std::string &uuidStr)
         ret[j] = (val[uuidStr[i]] << 4) | val[uuidStr[i+1]];
     return ret;
 }
-
