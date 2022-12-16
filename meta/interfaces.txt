@@ -14,6 +14,7 @@ sensor_msgs/msg/JointState
 sensor_msgs/msg/Image
 sensor_msgs/msg/PointCloud2
 sensor_msgs/msg/PointField
+sensor_msgs/msg/Imu
 std_msgs/msg/Bool
 std_msgs/msg/Byte
 std_msgs/msg/ColorRGBA
@@ -61,3 +62,4 @@ manipulation_msgs/action/Pick
 manipulation_msgs/action/Place
 manipulation_msgs/action/Move
 shape_msgs/msg/SolidPrimitive
+uwb_msgs/msg/Ranges

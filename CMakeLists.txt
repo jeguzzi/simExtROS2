@@ -46,6 +46,7 @@ find_package(led_strip_msgs REQUIRED)
 find_package(conveyor_msgs REQUIRED)
 find_package(control_msgs REQUIRED)
 find_package(manipulation_msgs REQUIRED)
+find_package(uwb_msgs REQUIRED)
 
 if(NOT LIBPLUGIN_DIR)
     if(DEFINED ENV{COPPELIASIM_ROOT_DIR})
@@ -118,6 +119,7 @@ ament_target_dependencies(
     "conveyor_msgs"
     "manipulation_msgs"
     "control_msgs"
+    "uwb_msgs"
 )
 if(image_transport_FOUND)
     ament_target_dependencies(
