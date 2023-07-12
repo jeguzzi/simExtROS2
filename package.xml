@@ -11,29 +11,16 @@
 
   <depend>actionlib_msgs</depend>
   <depend>action_msgs</depend>
-  <depend>diagnostic_msgs</depend>
-  <depend>gazebo_msgs</depend>
   <depend>geometry_msgs</depend>
-  <depend>lifecycle_msgs</depend>
-  <depend>map_msgs</depend>
-  <depend>nav_msgs</depend>
-  <depend>pendulum_msgs</depend>
-  <depend>rosgraph_msgs</depend>
   <depend>sensor_msgs</depend>
-  <depend>shape_msgs</depend>
+<!--   <depend>nav_msgs</depend>
   <depend>std_msgs</depend>
-  <depend>stereo_msgs</depend>
-  <depend>tf2_geometry_msgs</depend>
-  <depend>tf2_msgs</depend>
-  <depend>trajectory_msgs</depend>
-  <depend>unique_identifier_msgs</depend>
-  <depend>visualization_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>shape_msgs</depend>
+  <depend>trajectory_msgs</depend> -->
   <depend>image_transport</depend>
-
-  <depend>led_strip_msgs</depend>
-  <depend>conveyor_msgs</depend>
-
-
+  <depend>tf2_ros</depend>
+  
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 

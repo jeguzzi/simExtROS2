@@ -28,27 +28,12 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_ros REQUIRED)
-find_package(diagnostic_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(lifecycle_msgs REQUIRED)
-find_package(map_msgs REQUIRED)
-find_package(nav_msgs REQUIRED)
-find_package(pendulum_msgs REQUIRED)
-find_package(rosgraph_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(shape_msgs REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(stereo_msgs REQUIRED)
-find_package(tf2_geometry_msgs REQUIRED)
-find_package(tf2_msgs REQUIRED)
-find_package(trajectory_msgs REQUIRED)
-find_package(unique_identifier_msgs REQUIRED)
-find_package(visualization_msgs REQUIRED)
-find_package(std_srvs REQUIRED)
-find_package(example_interfaces REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(tf2_ros REQUIRED)
 find_package(image_transport)
-find_package(led_strip_msgs REQUIRED)
-find_package(conveyor_msgs REQUIRED)
 
 if(NOT COPPELIASIM_INCLUDE_DIR)
     if(DEFINED ENV{COPPELIASIM_ROOT_DIR})
@@ -74,10 +59,39 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/include/sim_ros2_interface)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated)
 
+set(packages "")
+set(interfaces "")
+
+file(GLOB files "${CMAKE_CURRENT_SOURCE_DIR}/meta/*interfaces.txt")
+
+foreach(file IN LISTS files)
+    file(STRINGS ${file} _interfaces)
+    set(interfaces ${interfaces} ${_interfaces})
+endforeach()
+
+foreach(interface IN LISTS interfaces)
+    string(FIND ${interface} "/" index)
+    string(SUBSTRING ${interface} 0 ${index} pkg)
+    if(NOT ${pkg} IN_LIST packages)
+        list(APPEND packages ${pkg})
+    endif()
+endforeach()
+
+
+foreach(PKG IN LISTS packages)
+    find_package(${PKG} REQUIRED)
+endforeach()
+
+string(JOIN "\n" interfaces ${interfaces})
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/interfaces.txt ${interfaces})
+
 set(generatedFiles)
 file(GLOB templateFiles RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/templates/ ${CMAKE_CURRENT_SOURCE_DIR}/templates/*)
 foreach(templateFile ${templateFiles})
-    add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/${templateFile}" COMMAND ${Python3_EXECUTABLE} "${COPPELIASIM_INCLUDE_DIR}/simStubsGen/external/pycpp/pycpp.py" -p "interfaces_file=${CMAKE_CURRENT_SOURCE_DIR}/meta/interfaces.txt" -i "${CMAKE_CURRENT_SOURCE_DIR}/templates/${templateFile}" -o "${CMAKE_CURRENT_BINARY_DIR}/generated/${templateFile}" -P "${CMAKE_CURRENT_SOURCE_DIR}/tools" DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/parse_interfaces.py" "${CMAKE_CURRENT_SOURCE_DIR}/meta/interfaces.txt" "${CMAKE_CURRENT_SOURCE_DIR}/templates/${templateFile}")
+    add_custom_command(
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/${templateFile}" 
+        COMMAND ${Python3_EXECUTABLE} "${COPPELIASIM_INCLUDE_DIR}/simStubsGen/external/pycpp/pycpp.py" -p "interfaces_file=${CMAKE_CURRENT_BINARY_DIR}/generated/interfaces.txt" -i "${CMAKE_CURRENT_SOURCE_DIR}/templates/${templateFile}" -o "${CMAKE_CURRENT_BINARY_DIR}/generated/${templateFile}" -P "${CMAKE_CURRENT_SOURCE_DIR}/tools" 
+        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tools/parse_interfaces.py" "${CMAKE_CURRENT_BINARY_DIR}/generated/interfaces.txt" "${CMAKE_CURRENT_SOURCE_DIR}/templates/${templateFile}")
     set(generatedFiles ${generatedFiles} "${CMAKE_CURRENT_BINARY_DIR}/generated/${templateFile}")
 endforeach()
 add_custom_target(generate_ros_code DEPENDS ${generatedFiles})
@@ -99,33 +113,21 @@ target_link_libraries(simExtROS2 Boost::boost)
 #ament_target_dependencies(simExtROS2 rclcpp)
 ament_target_dependencies(
     simExtROS2
-    "diagnostic_msgs"
+    "rclcpp"
+    "rclcpp_action"
+    "tf2_ros"
     "geometry_msgs"
-    "lifecycle_msgs"
-    "map_msgs"
-    "nav_msgs"
-    "pendulum_msgs"
-    "rosgraph_msgs"
     "sensor_msgs"
-    "shape_msgs"
-    "std_msgs"
-    "stereo_msgs"
-    "tf2_geometry_msgs"
-    "tf2_msgs"
-    "trajectory_msgs"
-    "unique_identifier_msgs"
-    "visualization_msgs"
-    "std_srvs"
-    "example_interfaces"
-    "led_strip_msgs"
-    "conveyor_msgs"
 )
+ament_target_dependencies(simExtROS2 ${packages})
 if(image_transport_FOUND)
     ament_target_dependencies(
         simExtROS2
         "image_transport"
     )
 endif()
+
+
 
 # Causes the visibility macros to use dllexport rather than dllimport,
 # which is appropriate when building the dll but not consuming it.
