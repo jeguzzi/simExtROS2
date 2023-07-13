@@ -10,6 +10,7 @@ using namespace std::placeholders;
 #include <boost/type_erasure/any_cast.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 #include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 #if image_transport_FOUND
@@ -643,6 +644,36 @@ public:
     }
   }
 
+  void sendStaticTransform(sendStaticTransform_in *in, sendStaticTransform_out *out) {
+    geometry_msgs::msg::TransformStamped t;
+    read__geometry_msgs__msg__TransformStamped(in->_.stackID, &t);
+    stfbr->sendTransform(t);
+  }
+
+  void sendStaticTransforms(sendStaticTransforms_in *in, sendStaticTransforms_out *out) {
+    std::vector<geometry_msgs::msg::TransformStamped> v;
+
+    sim::moveStackItemToTop(in->_.stackID, 0);
+    int i = sim::getStackTableInfo(in->_.stackID, 0);
+    if (i < 0)
+      throw sim::exception(
+          "error reading input argument 1 (origin): expected array");
+    int oldsz = sim::getStackSize(in->_.stackID);
+    sim::unfoldStackTable(in->_.stackID);
+    int sz = (sim::getStackSize(in->_.stackID) - oldsz + 1) / 2;
+    for (int i = 0; i < sz; i++) {
+      sim::moveStackItemToTop(in->_.stackID, oldsz - 1);
+      int j;
+      read__int32(in->_.stackID, &j);
+      simMoveStackItemToTop(in->_.stackID, oldsz - 1);
+      geometry_msgs::msg::TransformStamped t;
+      read__geometry_msgs__msg__TransformStamped(in->_.stackID, &t);
+      v.push_back(t);
+    }
+
+    stfbr->sendTransform(v);
+  }
+
   void sendTransform(sendTransform_in *in, sendTransform_out *out) {
     geometry_msgs::msg::TransformStamped t;
     read__geometry_msgs__msg__TransformStamped(in->_.stackID, &t);
@@ -911,6 +942,7 @@ public:
       simReleaseBuffer(node_name);
 
     tfbr = new tf2_ros::TransformBroadcaster(node);
+    stfbr = new tf2_ros::StaticTransformBroadcaster(node);
     tf_buffer = new tf2_ros::Buffer(node->get_clock());
     tf_listener = new tf2_ros::TransformListener(*tf_buffer, node, false);
 #if image_transport_FOUND
@@ -940,6 +972,7 @@ public:
     delete imtr;
 #endif
     delete tfbr;
+    delete stfbr;
     delete tf_listener;
     delete tf_buffer;
   }
@@ -952,6 +985,7 @@ private:
 
   tf2_ros::Buffer *tf_buffer;
   tf2_ros::TransformBroadcaster *tfbr = nullptr;
+  tf2_ros::StaticTransformBroadcaster *stfbr = nullptr;
   tf2_ros::TransformListener *tf_listener = nullptr;
 #if image_transport_FOUND
   image_transport::ImageTransport *imtr = nullptr;

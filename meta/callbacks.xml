@@ -646,6 +646,40 @@
             </param>
         </return>
     </command>
+    <command name="sendStaticTransform">
+        <description>Publish a static TF transformation between frames.</description>
+        <categories>
+            <category name="topic" />
+            <category name="tf" />
+        </categories>
+        <see-also>
+            <!--command name="..." /-->
+        </see-also>
+        <params>
+            <param name="transform" type="table" skip="true">
+                <description>the transformation expressed as a geometry_msgs/msg/TransformStamped message, i.e. {header={stamp=timeStamp, frame_id='...'}, child_frame_id='...', transform={translation={x=..., y=..., z=...}, rotation={x=..., y=..., z=..., w=...}}}</description>
+            </param>
+        </params>
+        <return>
+        </return>
+    </command>
+    <command name="sendStaticTransforms">
+        <description>Publish several static TF transformations between frames.</description>
+        <categories>
+            <category name="topic" />
+            <category name="tf" />
+        </categories>
+        <see-also>
+            <!--command name="..." /-->
+        </see-also>
+        <params>
+            <param name="transforms" type="table" skip="true">
+                <description>an array of geometry_msgs/msg/TransformStamped messages</description>
+            </param>
+        </params>
+        <return>
+        </return>
+    </command>
     <command name="sendTransform">
         <description>Publish a TF transformation between frames.</description>
         <categories>
