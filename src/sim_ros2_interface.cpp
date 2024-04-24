@@ -38,37 +38,39 @@ struct unsupported_type : public std::exception {
 
 class Plugin : public sim::Plugin {
 public:
-  void onStart() {
-    if (!initialize())
-      throw std::runtime_error("failed to initialize ROS2 node");
 
-    if (!registerScriptStuff())
-      throw std::runtime_error("failed to register script stuff");
-
-    setExtVersion("ROS2 Interface Plugin");
-    setBuildDate(BUILD_DATE);
-  }
-
-  void onEnd() { shutdown(); }
-
-  void onInstancePass(const sim::InstancePassFlags &flags, bool first) {
-    rclcpp::spin_some(node);
-  }
-
-  void onMainScriptAboutToBeCalled(int &out) {
-    int stopSimulationRequestCounter;
-    simGetInt32Param(sim_intparam_stop_request_counter, &stopSimulationRequestCounter);
-    bool doNotRun = simGetBoolParam(sim_boolparam_rosinterface_donotrunmainscript);
-    if(doNotRun > 0)
+    void onInit()
     {
         if(previousStopSimulationRequestCounter == -1)
             previousStopSimulationRequestCounter = stopSimulationRequestCounter;
         if(previousStopSimulationRequestCounter == stopSimulationRequestCounter)
             out = 0; // this tells CoppeliaSim that we don't wanna execute the main script
     }
-    else
-        previousStopSimulationRequestCounter = -1;
-  }
+
+    void onCleanup()
+    {
+        shutdown();
+    }
+
+    void onInstancePass(const sim::InstancePassFlags &flags)
+    {
+        rclcpp::spin_some(node);
+    }
+
+    void onMainScriptAboutToBeCalled(int &out)
+    {
+        int stopSimulationRequestCounter = sim::getInt32Param(sim_intparam_stop_request_counter);
+        bool doNotRun = sim::getBoolParam(sim_boolparam_rosinterface_donotrunmainscript);
+        if(doNotRun > 0)
+        {
+            if(previousStopSimulationRequestCounter == -1)
+                previousStopSimulationRequestCounter = stopSimulationRequestCounter;
+            if(previousStopSimulationRequestCounter == stopSimulationRequestCounter)
+                out = 0; // this tells CoppeliaSim that we don't wanna execute the main script
+        }
+        else
+            previousStopSimulationRequestCounter = -1;
+    }
 
   void onSimulationAboutToStart() { previousStopSimulationRequestCounter = -1; }
 
@@ -131,13 +133,12 @@ public:
     }
   }
 
-  bool shouldProxyBeDestroyedAfterSimulationStop(int scriptID)
-  {
-    if(simGetSimulationState() == sim_simulation_stopped)
-        return false;
-    int property;
-    if(simGetScriptInt32Param(scriptID,sim_scriptintparam_type,&property) != 1)
-        return false;
+
+    bool shouldProxyBeDestroyedAfterSimulationStop(int scriptID)
+    {
+        if(sim::getSimulationState() == sim_simulation_stopped)
+            return false;
+        int property = sim::getScriptInt32Param(scriptID, sim_scriptintparam_type);
 #if SIM_PROGRAM_FULL_VERSION_NB <= 4010003
     if (property & sim_scripttype_threaded)
       property -= sim_scripttype_threaded;
@@ -186,6 +187,72 @@ public:
       return;
     }
   }
+
+    rclcpp::QoS get_qos(const std::optional<simros2_qos> &opt_qos)
+    {
+        if(!opt_qos.has_value())
+            return rclcpp::QoS {10};
+
+        const simros2_qos &qos = opt_qos.value();
+        rmw_qos_profile_t profile;
+        switch(qos.history)
+        {
+        case simros2_qos_history_policy_system_default:
+            profile.history = RMW_QOS_POLICY_HISTORY_SYSTEM_DEFAULT;
+            break;
+        case simros2_qos_history_policy_keep_last:
+            profile.history = RMW_QOS_POLICY_HISTORY_KEEP_LAST;
+            break;
+        case simros2_qos_history_policy_keep_all:
+            profile.history = RMW_QOS_POLICY_HISTORY_KEEP_ALL;
+            break;
+        }
+        profile.depth = qos.depth;
+        switch(qos.reliability)
+        {
+        case simros2_qos_reliability_policy_system_default:
+            profile.reliability = RMW_QOS_POLICY_RELIABILITY_SYSTEM_DEFAULT;
+            break;
+        case simros2_qos_reliability_policy_reliable:
+            profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+            break;
+        case simros2_qos_reliability_policy_best_effort:
+            profile.reliability = RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT;
+            break;
+        }
+        switch(qos.durability)
+        {
+        case simros2_qos_durability_policy_system_default:
+            profile.durability = RMW_QOS_POLICY_DURABILITY_SYSTEM_DEFAULT;
+            break;
+        case simros2_qos_durability_policy_transient_local:
+            profile.durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
+            break;
+        case simros2_qos_durability_policy_volatile:
+            profile.durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+            break;
+        }
+        profile.deadline.sec = qos.deadline.sec;
+        profile.deadline.nsec = qos.deadline.nanosec;
+        profile.lifespan.sec = qos.lifespan.sec;
+        profile.lifespan.nsec = qos.lifespan.nanosec;
+        switch(qos.liveliness)
+        {
+        case simros2_qos_liveliness_policy_system_default:
+            profile.liveliness = RMW_QOS_POLICY_LIVELINESS_SYSTEM_DEFAULT;
+            break;
+        case simros2_qos_liveliness_policy_automatic:
+            profile.liveliness = RMW_QOS_POLICY_LIVELINESS_AUTOMATIC;
+            break;
+        case simros2_qos_liveliness_policy_manual_by_topic:
+            profile.liveliness = RMW_QOS_POLICY_LIVELINESS_MANUAL_BY_TOPIC;
+            break;
+        }
+        profile.liveliness_lease_duration.sec = qos.liveliness_lease_duration.sec;
+        profile.liveliness_lease_duration.nsec = qos.liveliness_lease_duration.nanosec;
+        profile.avoid_ros_namespace_conventions = qos.avoid_ros_namespace_conventions;
+        return rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(profile), profile);
+    }
 
   void createSubscription(createSubscription_in *in,
                           createSubscription_out *out) {
@@ -265,13 +332,14 @@ public:
     publisherProxy->rd_opt.uint8array_as_string = true;
   }
 
-  void publish(publish_in *in, publish_out *out) {
-    PublisherProxy *publisherProxy = publisherHandles.get(in->publisherHandle);
 
-    simMoveStackItemToTop(in->_.stackID, 0);
+    void publish(publish_in *in, publish_out *out)
+    {
+        PublisherProxy *publisherProxy = publisherHandles.get(in->publisherHandle);
 
-    if (0) {
-    }
+        sim::moveStackItemToTop(in->_.stackID, 0);
+
+        if(0) {}
 #include <pub_publish.cpp>
     else {
       throw unsupported_type("message", publisherProxy->topicType);
@@ -328,7 +396,7 @@ public:
   void call(call_in *in, call_out *out) {
     ClientProxy *clientProxy = clientHandles.get(in->clientHandle);
 
-    simMoveStackItemToTop(in->_.stackID, 0);
+    sim::moveStackItemToTop(in->_.stackID, 0);
 
     if (0) {
     }
@@ -423,14 +491,13 @@ public:
     actionClientProxy->wr_opt.uint8array_as_string = true;
   }
 
-  void sendGoal(sendGoal_in *in, sendGoal_out *out) {
-    ActionClientProxy *actionClientProxy =
-        actionClientHandles.get(in->actionClientHandle);
+    void sendGoal(sendGoal_in *in, sendGoal_out *out)
+    {
+        ActionClientProxy *actionClientProxy = actionClientHandles.get(in->actionClientHandle);
 
-    simMoveStackItemToTop(in->_.stackID, 0);
+        sim::moveStackItemToTop(in->_.stackID, 0);
 
-    if (0) {
-    }
+        if(0) {}
 #include <actcli_sendGoal.cpp>
     else {
       throw unsupported_type("action", actionClientProxy->actionType);
@@ -680,29 +747,30 @@ public:
     tfbr->sendTransform(t);
   }
 
-  void sendTransforms(sendTransforms_in *in, sendTransforms_out *out) {
-    std::vector<geometry_msgs::msg::TransformStamped> v;
+    void sendTransforms(sendTransforms_in *in, sendTransforms_out *out)
+    {
+        std::vector<geometry_msgs::msg::TransformStamped> v;
 
-    sim::moveStackItemToTop(in->_.stackID, 0);
-    int i = sim::getStackTableInfo(in->_.stackID, 0);
-    if (i < 0)
-      throw sim::exception(
-          "error reading input argument 1 (origin): expected array");
-    int oldsz = sim::getStackSize(in->_.stackID);
-    sim::unfoldStackTable(in->_.stackID);
-    int sz = (sim::getStackSize(in->_.stackID) - oldsz + 1) / 2;
-    for (int i = 0; i < sz; i++) {
-      sim::moveStackItemToTop(in->_.stackID, oldsz - 1);
-      int j;
-      read__int32(in->_.stackID, &j);
-      simMoveStackItemToTop(in->_.stackID, oldsz - 1);
-      geometry_msgs::msg::TransformStamped t;
-      read__geometry_msgs__msg__TransformStamped(in->_.stackID, &t);
-      v.push_back(t);
+        sim::moveStackItemToTop(in->_.stackID, 0);
+        int i = sim::getStackTableInfo(in->_.stackID, 0);
+        if(i < 0)
+            throw sim::exception("error reading input argument 1 (origin): expected array");
+        int oldsz = sim::getStackSize(in->_.stackID);
+        sim::unfoldStackTable(in->_.stackID);
+        int sz = (sim::getStackSize(in->_.stackID) - oldsz + 1) / 2;
+        for(int i = 0; i < sz; i++)
+        {
+            sim::moveStackItemToTop(in->_.stackID, oldsz - 1);
+            int j;
+            read__int32(in->_.stackID, &j);
+            sim::moveStackItemToTop(in->_.stackID, oldsz - 1);
+            geometry_msgs::msg::TransformStamped t;
+            read__geometry_msgs__msg__TransformStamped(in->_.stackID, &t);
+            v.push_back(t);
+        }
+
+        tfbr->sendTransform(v);
     }
-
-    tfbr->sendTransform(v);
-  }
 
   void getTransform(getTransform_in *in, getTransform_out *out) {
     try {
@@ -823,18 +891,19 @@ public:
 #endif
   }
 
-  void getTime(getTime_in *in, getTime_out *out) {
-    rcl_clock_type_t t = RCL_ROS_TIME;
-    switch (in->clock_type) {
-    case sim_ros2_clock_ros:
-      t = RCL_ROS_TIME;
-      break;
-    case sim_ros2_clock_system:
-      t = RCL_SYSTEM_TIME;
-      break;
-    case sim_ros2_clock_steady:
-      t = RCL_STEADY_TIME;
-      break;
+    void getTime(getTime_in *in, getTime_out *out)
+    {
+        rcl_clock_type_t t = RCL_ROS_TIME;
+        switch(in->clock_type)
+        {
+        case simros2_clock_ros:    t = RCL_ROS_TIME;    break;
+        case simros2_clock_system: t = RCL_SYSTEM_TIME; break;
+        case simros2_clock_steady: t = RCL_STEADY_TIME; break;
+        }
+        rclcpp::Clock ros_clock(t);
+        builtin_interfaces::msg::Time ros_now = ros_clock.now();
+        out->time.sec = ros_now.sec;
+        out->time.nanosec = ros_now.nanosec;
     }
     rclcpp::Clock ros_clock(t);
     builtin_interfaces::msg::Time ros_now = ros_clock.now();
@@ -930,16 +999,9 @@ public:
 
   bool initialize() {
     rclcpp::init(0, nullptr);
+    auto node_name = sim::getNamedStringParam("ROS2Interface.nodeName");
 
-    int node_name_length = 0;
-    char *node_name = nullptr;
-    node_name = simGetNamedStringParam("ROS2Interface.nodeName", &node_name_length);
-
-    node = rclcpp::Node::make_shared(
-        node_name && node_name_length ? node_name : "sim_ros2_interface");
-
-    if (node_name)
-      simReleaseBuffer(node_name);
+    node = rclcpp::Node::make_shared(node_name.value_or("sim_ros2_interface"));
 
     tfbr = new tf2_ros::TransformBroadcaster(node);
     stfbr = new tf2_ros::StaticTransformBroadcaster(node);
@@ -999,5 +1061,5 @@ private:
   sim::Handles<ActionServerProxy*> actionServerHandles;
 };
 
-SIM_PLUGIN(PLUGIN_NAME, PLUGIN_VERSION, Plugin)
+SIM_PLUGIN(Plugin)
 #include "stubsPlusPlus.cpp"

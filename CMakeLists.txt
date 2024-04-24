@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16.3)
 project(sim_ros2_interface)
 
 # Default to C99
@@ -45,7 +45,7 @@ endif()
 list(APPEND CMAKE_MODULE_PATH
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules
     ${COPPELIASIM_INCLUDE_DIR}/cmake)
-find_package(CoppeliaSim 4.1.0.0 REQUIRED)
+find_package(CoppeliaSim 4.5.1.7 REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 find_package(Boost REQUIRED)
 
@@ -95,7 +95,7 @@ foreach(templateFile ${templateFiles})
     set(generatedFiles ${generatedFiles} "${CMAKE_CURRENT_BINARY_DIR}/generated/${templateFile}")
 endforeach()
 add_custom_target(generate_ros_code DEPENDS ${generatedFiles})
-coppeliasim_generate_stubs(${CMAKE_CURRENT_BINARY_DIR}/generated XML_FILE ${CMAKE_CURRENT_SOURCE_DIR}/meta/callbacks.xml LUA_FILE ${CMAKE_CURRENT_SOURCE_DIR}/simROS2.lua)
+coppeliasim_generate_stubs(${CMAKE_CURRENT_BINARY_DIR}/generated XML_FILE ${CMAKE_CURRENT_SOURCE_DIR}/meta/callbacks.xml LUA_FILE ${CMAKE_CURRENT_SOURCE_DIR}/lua/simROS2.lua)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/sim_ros2_interface/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/sim_ros2_interface/config.h)
 
@@ -104,15 +104,15 @@ set(SOURCES
     src/ros_msg_builtin_io.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/generated/callbacks.cpp
 )
-coppeliasim_add_plugin(simExtROS2 SOURCES ${SOURCES})
-add_dependencies(simExtROS2 generate_ros_code)
-target_include_directories(simExtROS2 PUBLIC
+coppeliasim_add_plugin(simROS2 SOURCES ${SOURCES})
+add_dependencies(simROS2 generate_ros_code)
+target_include_directories(simROS2 PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
-target_link_libraries(simExtROS2 Boost::boost)
-#ament_target_dependencies(simExtROS2 rclcpp)
+target_link_libraries(simROS2 PRIVATE Boost::boost)
+#ament_target_dependencies(simROS2 rclcpp)
 ament_target_dependencies(
-    simExtROS2
+    simROS2
     "rclcpp"
     "rclcpp_action"
     "tf2_ros"
@@ -122,8 +122,9 @@ ament_target_dependencies(
 ament_target_dependencies(simExtROS2 ${packages})
 if(image_transport_FOUND)
     ament_target_dependencies(
-        simExtROS2
-        "image_transport"
+        simROS2
+        PUBLIC
+        image_transport
     )
 endif()
 
@@ -131,6 +132,6 @@ endif()
 
 # Causes the visibility macros to use dllexport rather than dllimport,
 # which is appropriate when building the dll but not consuming it.
-target_compile_definitions(simExtROS2 PRIVATE "SIM_ROS2_INTERFACE_BUILDING_LIBRARY")
+target_compile_definitions(simROS2 PRIVATE "SIM_ROS2_INTERFACE_BUILDING_LIBRARY")
 
 ament_package()
