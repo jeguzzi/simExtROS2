@@ -45,7 +45,7 @@ endif()
 list(APPEND CMAKE_MODULE_PATH
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules
     ${COPPELIASIM_INCLUDE_DIR}/cmake)
-find_package(CoppeliaSim 4.5.1.7 REQUIRED)
+find_package(CoppeliaSim 4 REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 find_package(Boost REQUIRED)
 
@@ -109,17 +109,18 @@ add_dependencies(simROS2 generate_ros_code)
 target_include_directories(simROS2 PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
-target_link_libraries(simROS2 PRIVATE Boost::boost)
+# target_link_libraries(simROS2 Boost::boost)
 #ament_target_dependencies(simROS2 rclcpp)
 ament_target_dependencies(
     simROS2
+    PUBLIC
     "rclcpp"
     "rclcpp_action"
     "tf2_ros"
     "geometry_msgs"
     "sensor_msgs"
 )
-ament_target_dependencies(simExtROS2 ${packages})
+ament_target_dependencies(simROS2 PUBLIC ${packages})
 if(image_transport_FOUND)
     ament_target_dependencies(
         simROS2
