@@ -46,7 +46,7 @@ list(APPEND CMAKE_MODULE_PATH
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules
     ${COPPELIASIM_INCLUDE_DIR}/cmake)
 find_package(CoppeliaSim 4 REQUIRED)
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 find_package(Boost REQUIRED)
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated)
@@ -110,6 +110,12 @@ target_include_directories(simROS2 PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 # target_link_libraries(simROS2 Boost::boost)
+
+if(APPLE)
+    # ROS libraries on macOS leave it to the application to load a Python shared library
+    target_link_libraries(simROS2 PRIVATE Python3::Python)
+endif()
+
 #ament_target_dependencies(simROS2 rclcpp)
 ament_target_dependencies(
     simROS2
