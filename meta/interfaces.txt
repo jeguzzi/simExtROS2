@@ -32,6 +32,7 @@ nav_msgs/msg/Path
 nav_msgs/msg/OccupancyGrid
 nav_msgs/msg/GridCells
 nav_msgs/msg/MapMetaData
+rosgraph_msgs/msg/Clock
 sensor_msgs/msg/Image
 sensor_msgs/msg/LaserScan
 sensor_msgs/msg/PointCloud2
